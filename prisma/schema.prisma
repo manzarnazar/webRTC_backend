@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int                 @id @default(autoincrement())
+  username       String              @unique
+  password       String              // bcrypt hash
+  referralCode   String              @unique
+  referredById   Int?
+  referredBy     User?               @relation("Referrals", fields: [referredById], references: [id])
+  referred       User[]              @relation("Referrals")
+  phoneNumber    String?
+  accountNumber  String?
+  bank           String?             // Easypaisa | Jazzcash | Sadapay
+  walletBalance  Decimal             @default(0) @db.Decimal(10, 2)
+  reservedAmount Decimal             @default(0) @db.Decimal(10, 2)
+  reservedAt     DateTime?
+  devices        Device[]
+  walletTransactions WalletTransaction[]
+  withdrawRequests WithdrawRequest[]
+  isAdmin        Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+}
+
+model WalletTransaction {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Decimal  @db.Decimal(10, 2)
+  type      String   // registration | referral_bonus | referral_reward | invest | invest_return
+  createdAt DateTime @default(now())
+}
+
+model WithdrawRequest {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id])
+  amount        Decimal  @db.Decimal(10, 2)
+  bank          String?
+  accountNumber String?
+  status        String   @default("pending") // pending | approved | rejected
+  createdAt     DateTime @default(now())
+}
+
+model Device {
+  id          String   @id @default(uuid())
+  deviceId    String   @unique
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id])
+  deviceName  String?
+  platform    String?
+  lastSeenAt  DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}

