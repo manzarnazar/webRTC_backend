@@ -202,7 +202,13 @@
   }
 
   async function connectAsViewer(roomId, token) {
-    let iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+    const fallbackIceServers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'turn:46.62.229.16:3478', username: 'streamuser', credential: 'strongpassword123' },
+      { urls: 'turn:46.62.229.16:3478?transport=tcp', username: 'streamuser', credential: 'strongpassword123' },
+    ];
+    let iceServers = fallbackIceServers;
     try {
       const r = await fetch(API_BASE + '/config');
       const cfg = await r.json();
@@ -217,6 +223,9 @@
     pc = new RTCPeerConnection({
       iceServers,
     });
+
+    let remoteDescSet = false;
+    const pendingCandidates = [];
 
     pc.ontrack = (e) => {
       if (e.streams && e.streams[0]) {
@@ -236,18 +245,35 @@
 
     socket.on('offer', async (data) => {
       const { sdp, fromPeerId } = data;
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit('answer', { roomId, sdp: answer, toPeerId: fromPeerId });
+      try {
+        const desc = sdp && (sdp.sdp !== undefined) ? sdp : { type: 'offer', sdp: sdp };
+        await pc.setRemoteDescription(new RTCSessionDescription(desc));
+        remoteDescSet = true;
+        for (const c of pendingCandidates) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(c));
+          } catch (err) {}
+        }
+        pendingCandidates.length = 0;
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('answer', { roomId, sdp: answer, toPeerId: fromPeerId });
+      } catch (e) {
+        viewerStatus.textContent = 'Offer error: ' + (e.message || e);
+        viewerStatus.className = 'status error';
+      }
     });
 
     socket.on('ice-candidate', async (data) => {
       const { candidate, fromPeerId } = data;
-      if (candidate) {
+      if (!candidate) return;
+      const c = candidate.candidate !== undefined ? candidate : { candidate: candidate, sdpMid: null, sdpMLineIndex: null };
+      if (remoteDescSet) {
         try {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          await pc.addIceCandidate(new RTCIceCandidate(c));
         } catch (e) {}
+      } else {
+        pendingCandidates.push(c);
       }
     });
 
