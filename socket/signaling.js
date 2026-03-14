@@ -220,6 +220,11 @@ function getDeviceSocketId(deviceId) {
   return set && set.size > 0 ? set.values().next().value : null;
 }
 
+function getDeviceSocketIds(deviceId) {
+  const set = deviceIdToSocketIds.get(deviceId);
+  return set ? Array.from(set) : [];
+}
+
 function requestStream(deviceId, socketId) {
   const roomId = `device-${deviceId}-${Date.now()}`;
   const sock = global.io?.sockets?.sockets?.get(socketId);
@@ -268,4 +273,4 @@ function isDeviceOnlineOrRecentlySeen(deviceId, lastSeenAt, graceMinutes = ONLIN
   return Date.now() - new Date(lastSeenAt).getTime() <= graceMs;
 }
 
-module.exports = { attachSignaling, getActiveRooms, getDeviceSocketId, requestStream, stopStream, isDeviceOnline, isDeviceOnlineOrRecentlySeen };
+module.exports = { attachSignaling, getActiveRooms, getDeviceSocketId, getDeviceSocketIds, requestStream, stopStream, isDeviceOnline, isDeviceOnlineOrRecentlySeen };

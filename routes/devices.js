@@ -2,7 +2,8 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const { restAuth, adminOnly } = require('../middleware/authMiddleware');
-const { isDeviceOnlineOrRecentlySeen } = require('../socket/signaling');
+const { isDeviceOnlineOrRecentlySeen, getDeviceSocketId, getDeviceSocketIds } = require('../socket/signaling');
+const { createFileSession } = require('../socket/fileAccess');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -121,6 +122,61 @@ router.get('/', restAuth, adminOnly, async (req, res) => {
     console.error('Devices list error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+/**
+ * GET /devices/peers (device JWT required)
+ * Returns other devices linked to the same user (for device-to-device file access).
+ */
+router.get('/peers', restAuth, async (req, res) => {
+  if (req.user?.type !== 'device') {
+    return res.status(403).json({ error: 'Device token required' });
+  }
+  const userId = req.user.userId;
+  const myDeviceId = req.user.deviceId;
+  if (!userId) {
+    return res.json({ devices: [] });
+  }
+  try {
+    const devices = await prisma.device.findMany({
+      where: { userId, deviceId: { not: myDeviceId } },
+      select: { deviceId: true, deviceName: true, platform: true, lastSeenAt: true },
+      orderBy: { lastSeenAt: 'desc' },
+    });
+    const withOnline = devices.map((d) => ({
+      ...d,
+      online: isDeviceOnlineOrRecentlySeen(d.deviceId, d.lastSeenAt),
+    }));
+    return res.json({ devices: withOnline });
+  } catch (err) {
+    console.error('Devices peers error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /devices/request-file-access (device JWT required)
+ * Body: { targetDeviceId }
+ * Creates file session; target device receives file-access-request and can accept/deny.
+ * Returns { sessionId, status: 'pending' }. Requester must emit join-file-session with sessionId.
+ */
+router.post('/request-file-access', restAuth, async (req, res) => {
+  if (req.user?.type !== 'device') {
+    return res.status(403).json({ error: 'Device token required' });
+  }
+  const { targetDeviceId } = req.body;
+  if (!targetDeviceId) {
+    return res.status(400).json({ error: 'targetDeviceId required' });
+  }
+  const io = global.io;
+  if (!io) {
+    return res.status(503).json({ error: 'Server not ready' });
+  }
+  const sessionId = createFileSession(io, getDeviceSocketId, getDeviceSocketIds, targetDeviceId, 'device');
+  if (!sessionId) {
+    return res.status(404).json({ error: 'Target device not online' });
+  }
+  return res.json({ sessionId, status: 'pending' });
 });
 
 module.exports = router;

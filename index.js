@@ -12,7 +12,8 @@ const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/users');
 const walletRoutes = require('./routes/wallet');
 const { restAuth, socketAuth, adminOnly } = require('./middleware/authMiddleware');
-const { attachSignaling, getActiveRooms } = require('./socket/signaling');
+const { attachSignaling, getActiveRooms, getDeviceSocketId } = require('./socket/signaling');
+const { attachFileAccess } = require('./socket/fileAccess');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -73,10 +74,14 @@ const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: { origin: '*' },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  maxHttpBufferSize: 50e6,
 });
 
 io.use(socketAuth);
 attachSignaling(io);
+attachFileAccess(io, getDeviceSocketId);
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`Server running on http://${HOST}:${PORT}`);

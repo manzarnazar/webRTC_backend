@@ -29,6 +29,13 @@
     .status.error { background: #7f1d1d; color: #fca5a5; }
     .status.success { background: #14532d; color: #86efac; }
     .status.info { background: #1e3a5f; color: #93c5fd; }
+    .file-preview-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .file-preview-overlay.hidden { display: none !important; }
+    .file-preview-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.8); cursor: pointer; }
+    .file-preview-box { position: relative; max-width: 95vw; max-height: 90vh; background: #1a1a2e; border-radius: 8px; overflow: hidden; }
+    .file-preview-close { position: absolute; top: 8px; right: 8px; z-index: 2; width: 36px; height: 36px; border: none; background: #333; color: #eee; font-size: 24px; line-height: 1; cursor: pointer; border-radius: 4px; }
+    .file-preview-close:hover { background: #444; }
+    #filePreviewContent img, #filePreviewContent video { max-width: 90vw; max-height: 85vh; display: block; }
   </style>
 </head>
 <body>
@@ -70,11 +77,44 @@
           <th>Platform</th>
           <th>Last Seen</th>
           <th>Status</th>
-          <th>Action</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody id="deviceList"></tbody>
     </table>
+  </div>
+
+  <div id="fileBrowserSection" class="section hidden">
+    <h2>File browser</h2>
+    <div id="fileBrowserStatus" class="status info">Connecting...</div>
+    <p>
+      <span id="fileBrowserPath" style="word-break: break-all; font-size: 12px;"></span>
+    </p>
+    <p>
+      <button id="fileBrowserBackBtn">Back</button>
+      <button id="fileBrowserRefreshBtn">Refresh</button>
+      <button id="fileBrowserUploadBtn">Upload file</button>
+      <input type="file" id="fileBrowserFileInput" style="display: none" />
+      <button id="fileBrowserCloseBtn" class="danger">Close file access</button>
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="fileBrowserList"></tbody>
+    </table>
+    <div id="filePreviewOverlay" class="file-preview-overlay hidden">
+      <div class="file-preview-backdrop"></div>
+      <div class="file-preview-box">
+        <button id="filePreviewCloseBtn" class="file-preview-close">×</button>
+        <div id="filePreviewContent"></div>
+      </div>
+    </div>
   </div>
 
   <div id="viewerSection" class="section hidden">
