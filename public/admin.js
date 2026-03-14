@@ -228,10 +228,22 @@
     const pendingCandidates = [];
 
     pc.ontrack = (e) => {
-      if (e.streams && e.streams[0]) {
-        remoteVideo.srcObject = e.streams[0];
-        viewerStatus.textContent = 'Streaming';
-        viewerStatus.className = 'status success';
+      const stream = (e.streams && e.streams[0]) ? e.streams[0] : new MediaStream([e.track]);
+      remoteVideo.srcObject = stream;
+      viewerStatus.textContent = 'Streaming';
+      viewerStatus.className = 'status success';
+      remoteVideo.play().catch(() => {});
+    };
+
+    pc.onconnectionstatechange = () => {
+      const state = pc.connectionState;
+      if (state === 'failed' || state === 'disconnected') {
+        viewerStatus.textContent = 'Connection ' + state;
+        viewerStatus.className = 'status error';
+      } else if (state === 'connecting' && viewerStatus.textContent === 'Waiting for stream...') {
+        viewerStatus.textContent = 'Connecting...';
+      } else if (state === 'connected' && viewerStatus.textContent.indexOf('Streaming') !== 0) {
+        viewerStatus.textContent = 'Connected, waiting for video...';
       }
     };
 
