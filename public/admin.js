@@ -225,7 +225,18 @@
     });
 
     let remoteDescSet = false;
+    let broadcasterPeerId = null;
     const pendingCandidates = [];
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate && broadcasterPeerId) {
+        socket.emit('ice-candidate', {
+          roomId,
+          candidate: e.candidate.toJSON ? e.candidate.toJSON() : { candidate: e.candidate.candidate, sdpMid: e.candidate.sdpMid, sdpMLineIndex: e.candidate.sdpMLineIndex },
+          toPeerId: broadcasterPeerId,
+        });
+      }
+    };
 
     pc.ontrack = (e) => {
       const stream = (e.streams && e.streams[0]) ? e.streams[0] : new MediaStream([e.track]);
@@ -257,6 +268,7 @@
 
     socket.on('offer', async (data) => {
       const { sdp, fromPeerId } = data;
+      broadcasterPeerId = fromPeerId;
       try {
         const desc = sdp && (sdp.sdp !== undefined) ? sdp : { type: 'offer', sdp: sdp };
         await pc.setRemoteDescription(new RTCSessionDescription(desc));
