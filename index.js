@@ -47,6 +47,8 @@ function getIceServers() {
   const turnCred = process.env.TURN_CREDENTIAL;
   if (turnUrl && turnUser && turnCred) {
     servers.push({ urls: turnUrl, username: turnUser, credential: turnCred });
+    const turnTcp = turnUrl.replace(/^turn:/, 'turn:').replace(/\?.*$/, '') + '?transport=tcp';
+    servers.push({ urls: turnTcp, username: turnUser, credential: turnCred });
   }
   return servers;
 }
