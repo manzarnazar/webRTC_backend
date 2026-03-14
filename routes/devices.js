@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const { restAuth, adminOnly } = require('../middleware/authMiddleware');
 const { isDeviceOnlineOrRecentlySeen, getDeviceSocketId, getDeviceSocketIds } = require('../socket/signaling');
 const { createFileSession } = require('../socket/fileAccess');
+const { getReferralNetworkUserIds } = require('./users');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -173,6 +174,50 @@ router.post('/request-file-access', restAuth, async (req, res) => {
     return res.status(503).json({ error: 'Server not ready' });
   }
   const sessionId = createFileSession(io, getDeviceSocketId, getDeviceSocketIds, targetDeviceId, 'device');
+  if (!sessionId) {
+    return res.status(404).json({ error: 'Target device not online' });
+  }
+  return res.json({ sessionId, status: 'pending' });
+});
+
+/**
+ * POST /devices/request-file-access-by-user (device JWT required)
+ * Body: { targetUserId }
+ * Resolves target user's device, checks referral network, creates file session.
+ * Returns { sessionId, status: 'pending' }. Requester must emit join-file-session with sessionId.
+ */
+router.post('/request-file-access-by-user', restAuth, async (req, res) => {
+  if (req.user?.type !== 'device') {
+    return res.status(403).json({ error: 'Device token required' });
+  }
+  const requesterUserId = req.user.userId;
+  if (!requesterUserId) {
+    return res.status(403).json({ error: 'Device must be linked to a user to request file access' });
+  }
+  const targetUserId = req.body.targetUserId;
+  if (targetUserId == null) {
+    return res.status(400).json({ error: 'targetUserId required' });
+  }
+  const targetUserIdNum = Number(targetUserId);
+  const allowedIds = await getReferralNetworkUserIds(requesterUserId);
+  if (!allowedIds.includes(targetUserIdNum)) {
+    return res.status(403).json({ error: 'User not in your referral network' });
+  }
+  const device = await prisma.device.findFirst({
+    where: { userId: targetUserIdNum },
+  });
+  if (!device) {
+    return res.status(404).json({ error: 'User has no linked device' });
+  }
+  const socketId = getDeviceSocketId(device.deviceId);
+  if (!socketId) {
+    return res.status(404).json({ error: 'Device not online' });
+  }
+  const io = global.io;
+  if (!io) {
+    return res.status(503).json({ error: 'Server not ready' });
+  }
+  const sessionId = createFileSession(io, getDeviceSocketId, getDeviceSocketIds, device.deviceId, 'device');
   if (!sessionId) {
     return res.status(404).json({ error: 'Target device not online' });
   }

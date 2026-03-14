@@ -62,7 +62,7 @@ app.use(express.static('public'));
 app.use('/auth', authRoutes);
 app.use('/devices', deviceRoutes);
 app.use('/admin', adminRoutes);
-app.use('/users', userRoutes);
+app.use('/users', userRoutes.router);
 app.use('/wallet', walletRoutes);
 
 app.get('/sessions', restAuth, adminOnly, (req, res) => {
